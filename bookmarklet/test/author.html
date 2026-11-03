@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>fixture: author page</title>
+<style>.hide{display:none}.collapse{display:none}.collapse.in{display:block}.version-row{display:none}.expanded .version-row{display:flex}.expanded .link-show-all-versions{display:none}.trow{display:flex;gap:8px}</style>
+</head>
+<body>
+<!-- Modelled on papers.ssrn.com author-page markup: a .trow.abs row per paper, followed by a hidden
+     .trow.abstract-row holding #keywords_<id>, #hrefDown<id> and an empty
+     #abstractBody_<id>. "All Abstracts" is simulated: it fills the bodies after a
+     delay, except 333, standing in for a request SSRN refused. The checks click
+     it as the user would; the tool itself must not. The version toggle
+     is a stand-in; SSRN's version markup (.version-row/.vg-container) was not captured. -->
+<h1>Jane Example</h1>
+<div id="scholarly-papers">
+  <!-- Real SSRN puts these in ul.separators-list.hidden-xs.hidden-sm; here the list is
+       hidden outright, as in a narrow window, so a check on offsetParent would fail. -->
+  <ul class="separators-list" style="display:none">
+    <li><a class="filter-link link-show-all-versions" href="#" onclick="document.getElementById('scholarly-papers').classList.add('expanded');return false;">All Versions</a></li>
+    <li><a class="filter-link link-show-all-abstracts" href="#" onclick="fixtureShowAllAbstracts(this);return false;">All Abstracts</a></li>
+  </ul>
+  <div class="tbody" id="tbody"></div>
+</div>
+<script src="author-fixture.js"></script>
+<script>
+window.__expect = {
+  rows: 5,
+  firstTitle: 'A First Example Paper',
+  firstAuthors: 'Jane Example, Example University School of Law; Sam Coauthor, Independent',
+  byId: {
+    '111': { Downloads: '4,408', Citations: '8', 'Number of Pages': '36', 'Posted Date': '13 Feb 2012',
+      'Venue / Publication': 'THE EXAMPLE HANDBOOK, 2010, Example Law School Research Paper No. 12-11',
+      Abstract: 'Abstract of paper 111, with markup and spacing.', Keywords: 'rules, examples, testing',
+      'PDF URL': pdf('111') },
+    '222': { Downloads: '980', Abstract: 'Abstract of paper 222, with markup and spacing.' },
+    '333': { Downloads: '', Abstract: '', Keywords: 'journals', 'Authors (with Affiliations)': 'Jane Example, Example University School of Law' },
+    '445': { Downloads: '12', Abstract: 'Abstract of paper 445, with markup and spacing.' }
+  },
+  status: /Abstracts: 4 of 5 \(SSRN hadn't returned the rest\)/,
+  userClicks: true,
+  historyPapers: 4,
+  archive: true
+};
+</script>
+<script src="../test-build/sscrapern.test.js"></script>
+<script src="checks.js"></script>
+</body></html>

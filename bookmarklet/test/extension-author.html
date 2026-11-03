@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>fixture: extension on author page</title>
+<link rel="stylesheet" href="../../extension/content.css">
+<style>.hide{display:none}.collapse{display:none}.collapse.in{display:block}.version-row{display:none}.expanded .version-row{display:flex}.expanded .link-show-all-versions{display:none}.trow{display:flex;gap:8px}</style>
+</head>
+<body>
+<!-- Runs the EXTENSION's scrape-core.js + content.js (not the bookmarklet build) as a page script on the shared
+     author fixture, with chrome.storage stubbed in memory and downloads captured.
+     Needs ../../extension/, so serve the project folder, not just bookmarklet/
+     (serve the folder that holds both bookmarklet/ and extension/). -->
+<h1>Jane Example</h1>
+<div id="scholarly-papers">
+  <!-- Real SSRN puts these in ul.separators-list.hidden-xs.hidden-sm; here the list is
+       hidden outright, as in a narrow window, so a check on offsetParent would fail. -->
+  <ul class="separators-list" style="display:none">
+    <li><a class="filter-link link-show-all-versions" href="#" onclick="document.getElementById('scholarly-papers').classList.add('expanded');return false;">All Versions</a></li>
+    <li><a class="filter-link link-show-all-abstracts" href="#" onclick="fixtureShowAllAbstracts(this);return false;">All Abstracts</a></li>
+  </ul>
+  <div class="tbody" id="tbody"></div>
+</div>
+<script src="author-fixture.js"></script>
+<script>
+// chrome.storage.local, callback style, in memory.
+const store = {};
+window.chrome = { runtime: {}, storage: { local: {
+  get(keys, cb) { cb(keys === null ? { ...store } : {}); },
+  set(items, cb) { Object.assign(store, items); cb(); },
+  remove(keys, cb) { keys.forEach((k) => delete store[k]); cb(); }
+} } };
+// Capture CSV downloads instead of saving them.
+window.__extDownloads = [];
+const realClick = HTMLAnchorElement.prototype.click;
+HTMLAnchorElement.prototype.click = function () {
+  if (!this.download) return realClick.call(this);
+  const name = this.download;
+  fetch(this.href).then((r) => r.text()).then((text) => window.__extDownloads.push({ filename: name, text: text.replace(/^﻿/, '') }));
+};
+// The warning before a scan: record it and answer as the test says.
+window.__confirms = [];
+window.__confirmAnswer = true;
+window.confirm = (msg) => { window.__confirms.push(msg); return window.__confirmAnswer; };
+</script>
+<script src="../../extension/scrape-core.js"></script>
+<script src="../../extension/content.js"></script>
+<script>
+(async function () {
+  const out = [];
+  let failures = 0;
+  const eq = (got, want, name) => {
+    const pass = JSON.stringify(got) === JSON.stringify(want);
+    if (!pass) failures++;
+    out.push(`${pass ? 'PASS' : 'FAIL'}  ${name}${pass ? '' : '  — got ' + JSON.stringify(got)}`);
+  };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function parseCsv(text) {
+    const rows = []; let row = []; let f = ''; let q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\r' || c === '\n') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); f = ''; rows.push(row); row = []; }
+      else f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.slice(1).map((r) => Object.fromEntries(rows[0].map((h, i) => [h, r[i]])));
+  }
+  async function click(id) {
+    const n = window.__extDownloads.length;
+    document.getElementById(id).click();
+    for (let i = 0; i < 200 && window.__extDownloads.length === n; i++) await sleep(50);
+    return window.__extDownloads[window.__extDownloads.length - 1];
+  }
+  try {
+    // Before the user clicks SSRN's links: a warning, and Cancel exports nothing.
+    window.__confirmAnswer = false;
+    document.getElementById('ssrn-csv-exporter-btn').click();
+    await sleep(200);
+    eq(window.__extDownloads.length, 0, 'export before clicking SSRN\'s links: Cancel exports nothing');
+    eq(window.__confirms.length === 1 && /"All Versions"/.test(window.__confirms[0]) && !/"All Abstracts" link/.test(window.__confirms[0]), true, 'first warning is for "All Versions" alone');
+    document.querySelector('.link-show-all-versions').click();
+    document.getElementById('ssrn-csv-exporter-btn').click();
+    await sleep(200);
+    eq(window.__confirms.length === 2 && /"All Abstracts" link .* hasn't been clicked/.test(window.__confirms[1]), true, 'then the "All Abstracts" warning on its own');
+    eq(window.__abstractClicks, 0, 'the extension never clicks "All Abstracts"');
+    eq(/First, above the paper list/.test(document.getElementById('ssrn-csv-exporter-steps').textContent), true, 'panel tells the user what to click');
+    // The user clicks "All Abstracts"; 333 never arrives, so OK goes ahead with 4 of 5.
+    document.querySelector('.link-show-all-abstracts').click();
+    await sleep(1200);
+    window.__confirmAnswer = true;
+    const papers = parseCsv((await click('ssrn-csv-exporter-btn')).text);
+    eq(/Only 4 of 5 abstracts have loaded/.test(window.__confirms[window.__confirms.length - 1]), true, 'after the clicks, the warning reports the missing abstract');
+    const by = (id) => papers.find((r) => r['Abstract ID'] === id) || {};
+    eq(papers.length, 5, 'papers CSV row count');
+    eq(by('111').Abstract, 'Abstract of paper 111, with markup and spacing.', 'paper 111: abstract from the page');
+    eq(by('111').Keywords, 'rules, examples, testing', 'paper 111: keywords from the page');
+    eq(by('111')['PDF URL'], pdf('111'), 'paper 111: PDF URL from the page');
+    eq(by('111').Downloads, '4,408', 'paper 111: downloads');
+    eq(by('333').Abstract, '', 'paper 333: abstract SSRN did not return stays blank');
+    eq(by('333').Keywords, 'journals', 'paper 333: keywords still read');
+    eq(by('445').Abstract, 'Abstract of paper 445, with markup and spacing.', 'version row 445: abstract');
+    eq(window.__abstractClicks, 1, '"All Abstracts" clicked once, by the user');
+    const status = document.getElementById('ssrn-csv-exporter-status').textContent;
+    eq(/Abstracts: 4 of 5 \(SSRN hadn't returned the rest\)/.test(status), true, 'status reports missing abstracts: ' + status);
+    eq(Object.keys(store).length, 4, 'history snapshots stored for the 4 papers with counts');
+    const hist = parseCsv((await click('ssrn-csv-exporter-history-btn')).text);
+    eq(hist.length, 4, 'history CSV rows');
+
+    // A failed storage read must not overwrite the stored history.
+    const before = JSON.stringify(store);
+    document.getElementById('keywords_222').textContent = '=1+1';
+    const realGet = chrome.storage.local.get;
+    chrome.storage.local.get = (keys, cb) => { chrome.runtime.lastError = { message: 'simulated' }; cb(undefined); chrome.runtime.lastError = undefined; };
+    await click('ssrn-csv-exporter-btn');
+    chrome.storage.local.get = realGet;
+    eq(JSON.stringify(store), before, 'storage read failure leaves stored history untouched');
+    const last = parseCsv(window.__extDownloads[window.__extDownloads.length - 1].text);
+    eq(last.find((r) => r['Abstract ID'] === '222').Keywords, "'=1+1", 'formula-like cell is prefixed with an apostrophe');
+    eq(/NOT added to the history/.test(document.getElementById('ssrn-csv-exporter-status').textContent), true, 'storage read failure is reported in the status line');
+
+  } catch (e) {
+    failures++;
+    out.push('FAIL  exception: ' + (e && e.stack || e));
+  }
+  out.unshift(failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)');
+  const pre = document.createElement('pre');
+  pre.id = 'results';
+  pre.textContent = out.join('\n');
+  document.body.prepend(pre);
+  document.title = failures === 0 ? 'PASS' : 'FAIL';
+})();
+</script>
+</body></html>

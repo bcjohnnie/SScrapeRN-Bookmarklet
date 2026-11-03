@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>fixture: series page</title></head>
+<body>
+<!-- Modelled on a www.ssrn.com/index.cfm/en/<series>/ page. The first .paper-wrap
+     follows SSRN's markup; the others vary it. -->
+<h1>Example Institute Research Paper Series</h1>
+<aside>
+  <h3>Top Downloaded Papers</h3>
+  <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=900001">Sidebar paper one</a>
+  <h3>Top Cited Papers</h3>
+  <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=900002">Sidebar paper two</a>
+</aside>
+<main>
+<p>Displaying 1-3 of 3 papers</p>
+<div class="paper-wrap"><div class="paper-info"><div class="title"><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7000001">An Example Series Paper</a></div><div class="reference">Example Institute Research Paper No. 26-12</div><div class="stats"><span>Number of pages: 72</span><span>Posted 25 Jul 2026</span></div><div class="authors"><div><a href="https://papers.ssrn.com/sol3/cf_dev/AbsByAuth.cfm?per_id=11">Ann Author</a></div><div><a href="https://papers.ssrn.com/sol3/cf_dev/AbsByAuth.cfm?per_id=12">Ben Author</a></div></div><div class="affiliations">First University - School of Law and Example University School of Law</div></div><div class="downloads"><span>Downloads</span><span>191</span></div></div>
+<div class="paper-wrap"><div class="paper-info"><div class="title"><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=612">A Title, With &quot;Quotes&quot; and a Comma</a></div><div class="reference">Journal of Things, Vol. 3</div><div class="stats"><span>Number of pages: 40</span><span>Posted 2 Jan 2020</span><span>Last Revised 5 Mar 2021</span></div><div class="authors"><div><a href="https://papers.ssrn.com/sol3/cf_dev/AbsByAuth.cfm?per_id=1">Jane Roe</a></div></div><div class="affiliations">Example Law School</div><span>Citation 7</span></div><div class="downloads"><span>Downloads</span><span>4,275</span></div></div>
+<div class="paper-wrap"><div class="paper-info"><div class="title"><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5000">No Downloads Shown</a></div><div class="reference">Published article</div><div class="stats"><span>Posted 9 Sep 2019</span></div><div class="authors"><div><a href="https://papers.ssrn.com/sol3/cf_dev/AbsByAuth.cfm?per_id=2">John Doe</a></div></div><div class="affiliations">Example</div></div></div>
+</main>
+<script>
+window.__expect = {
+  rows: 3,
+  firstTitle: 'An Example Series Paper',
+  firstAuthors: 'Ann Author, First University - School of Law; Ben Author, Example University School of Law',
+  byId: {
+    '612': { Downloads: '4,275', Citations: '7', 'Number of Pages': '40', 'Posted Date': '2 Jan 2020', 'Last Revised Date': '5 Mar 2021' },
+    '7000001': { Downloads: '191', 'Number of Pages': '72', 'Posted Date': '25 Jul 2026' },
+    // The extension's parent-list fallback gave this paper the first paper's 191.
+    '5000': { Downloads: '' }
+  },
+  historyPapers: 2
+};
+</script>
+<script src="../test-build/sscrapern.test.js"></script>
+<script src="checks.js"></script>
+</body></html>

@@ -1,0 +1,4 @@
+node_modules/
+bookmarklet/dist/
+bookmarklet/test-build/
+.DS_Store
